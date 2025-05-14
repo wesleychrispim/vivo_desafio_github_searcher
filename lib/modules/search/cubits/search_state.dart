@@ -13,12 +13,13 @@ class SearchLoading extends SearchState {}
 
 class SearchSuccess extends SearchState {
   final Map<String, dynamic> user;
-  final List<int> commitsCounts; // Novo
+  final List<int> commitsCounts;
+  final List<String> repositoryNames;
 
-  const SearchSuccess(this.user, this.commitsCounts);
+  const SearchSuccess(this.user, this.commitsCounts, this.repositoryNames);
 
   @override
-  List<Object?> get props => [user, commitsCounts];
+  List<Object?> get props => [user, commitsCounts, repositoryNames];
 }
 
 class SearchFailure extends SearchState {

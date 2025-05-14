@@ -61,6 +61,29 @@ class _SearchViewState extends State<SearchView> {
     }
   }
 
+  List<Widget> buildCharts(SearchSuccess state) {
+    List<Widget> charts = [];
+
+    for (int i = 0; i < state.repositoryNames.length; i += 5) {
+      final namesSlice = state.repositoryNames.skip(i).take(5).toList();
+      final countsSlice = state.commitsCounts.skip(i).take(5).toList();
+
+      charts.add(
+        Column(
+          children: [
+            UserRepositoriesChart(
+              repositoryCounts: countsSlice,
+              repositoryNames: namesSlice,
+            ),
+            const SizedBox(height: 24),
+          ],
+        ),
+      );
+    }
+
+    return charts;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -138,9 +161,7 @@ class _SearchViewState extends State<SearchView> {
                       children: [
                         UserCard(user: state.user),
                         const SizedBox(height: 24),
-                        UserRepositoriesChart(
-                          repositoryCounts: state.commitsCounts,
-                        ),
+                        ...buildCharts(state),
                       ],
                     );
                   } else if (state is SearchFailure) {

@@ -30,7 +30,6 @@ void main() {
       'followers': 100,
       'public_repos': 5,
     };
-    final mockCommits = [12, 8, 5, 4, 2];
 
     blocTest<SearchCubit, SearchState>(
       'Emite [Loading, Success] ao buscar usuário com sucesso',

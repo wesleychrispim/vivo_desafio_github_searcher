@@ -33,11 +33,8 @@ class SearchCubit extends Cubit<SearchState> {
         }
         if (filter.language != null) {
           final repos = await service.fetchUserRepos(username);
-
           final hasLanguage = repos.any((repo) =>
-          (repo['language']?.toLowerCase() ?? '') ==
-              filter.language!.toLowerCase());
-
+          (repo['language']?.toLowerCase() ?? '') == filter.language!.toLowerCase());
           if (!hasLanguage) {
             emit(const SearchFailure('Linguagem de programação não encontrada.'));
             return;
@@ -45,27 +42,24 @@ class SearchCubit extends Cubit<SearchState> {
         }
       }
 
-      final commitsCounts = await fetchCommitsOfUser(username);
+      final repos = await service.fetchUserRepos(username);
+      // ➔ NÃO usamos mais .take(5), agora pegamos todos!
 
-      emit(SearchSuccess(user, commitsCounts));
+      List<int> commitsCounts = [];
+      List<String> repositoryNames = [];
+
+      for (var repo in repos) {
+        final repoName = repo['name'];
+        if (repoName != null) {
+          final count = await service.fetchCommitsCount(username, repoName);
+          commitsCounts.add(count);
+          repositoryNames.add(repoName);
+        }
+      }
+
+      emit(SearchSuccess(user, commitsCounts, repositoryNames));
     } catch (_) {
       emit(const SearchFailure('Usuário não encontrado'));
     }
-  }
-
-  Future<List<int>> fetchCommitsOfUser(String username) async {
-    final repos = await service.fetchUserRepos(username);
-    final recentRepos = repos.take(5).toList();
-    List<int> commitsCounts = [];
-
-    for (var repo in recentRepos) {
-      final repoName = repo['name'];
-      if (repoName != null) {
-        final count = await service.fetchCommitsCount(username, repoName);
-        commitsCounts.add(count);
-      }
-    }
-
-    return commitsCounts;
   }
 }
