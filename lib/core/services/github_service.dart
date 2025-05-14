@@ -9,4 +9,18 @@ class GitHubService {
     final response = await dio.get('https://api.github.com/users/$username');
     return response.data;
   }
+
+  Future<List<Map<String, dynamic>>> fetchUserRepos(String username) async {
+    final response = await dio.get('https://api.github.com/users/$username/repos');
+    return List<Map<String, dynamic>>.from(response.data);
+  }
+
+  Future<int> fetchCommitsCount(String owner, String repoName) async {
+    final response = await dio.get('https://api.github.com/repos/$owner/$repoName/commits');
+    if (response.statusCode == 200) {
+      return (response.data as List).length;
+    } else {
+      return 0;
+    }
+  }
 }

@@ -7,6 +7,7 @@ import '../../../core/services/github_service.dart';
 import '../../history/pages/history_page.dart';
 import '../cubits/search_cubit.dart';
 import '../cubits/search_state.dart';
+import '../models/search_filter.dart';
 import '../widgets/user_card.dart';
 import '../widgets/user_repositories_chart.dart';
 
@@ -31,6 +32,10 @@ class SearchView extends StatefulWidget {
 
 class _SearchViewState extends State<SearchView> {
   final _controller = TextEditingController();
+  final _locationController = TextEditingController();
+  final _followersController = TextEditingController();
+  final _reposController = TextEditingController();
+  final _languageController = TextEditingController();
 
   Future<void> _openHistory() async {
     final username = await Navigator.push<String>(
@@ -39,14 +44,20 @@ class _SearchViewState extends State<SearchView> {
     );
     if (username != null) {
       _controller.text = username;
-      context.read<SearchCubit>().fetchUser(username);
+      _searchUser();
     }
   }
 
   void _searchUser() {
     final username = _controller.text.trim();
     if (username.isNotEmpty) {
-      context.read<SearchCubit>().fetchUser(username);
+      final filter = SearchFilter(
+        location: _locationController.text.isEmpty ? null : _locationController.text,
+        minFollowers: _followersController.text.isEmpty ? null : int.tryParse(_followersController.text),
+        minRepositories: _reposController.text.isEmpty ? null : int.tryParse(_reposController.text),
+        language: _languageController.text.isEmpty ? null : _languageController.text,
+      );
+      context.read<SearchCubit>().fetchUser(username, filter: filter);
     }
   }
 
@@ -74,6 +85,40 @@ class _SearchViewState extends State<SearchView> {
               ),
               onSubmitted: (_) => _searchUser(),
             ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _locationController,
+              decoration: const InputDecoration(
+                labelText: 'Filtro: Localização (opcional)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _followersController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Filtro: Mínimo de Seguidores (opcional)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _reposController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Filtro: Mínimo de Repositórios (opcional)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _languageController,
+              decoration: const InputDecoration(
+                labelText: 'Filtro: Linguagem de Programação (opcional)',
+                border: OutlineInputBorder(),
+              ),
+            ),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: _searchUser,
@@ -94,7 +139,7 @@ class _SearchViewState extends State<SearchView> {
                         UserCard(user: state.user),
                         const SizedBox(height: 24),
                         UserRepositoriesChart(
-                          repositoryCounts: [10, 8, 5, 12, 7], // Simulado
+                          repositoryCounts: state.commitsCounts,
                         ),
                       ],
                     );
