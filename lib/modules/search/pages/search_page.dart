@@ -1,47 +1,36 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/services/github_service.dart';
+import '../../history/pages/history_page.dart';
+import '../cubits/search_cubit.dart';
+import '../cubits/search_state.dart';
 import '../widgets/user_card.dart';
 import '../widgets/user_repositories_chart.dart';
-import '../../history/pages/history_page.dart';
 
-class SearchPage extends StatefulWidget {
+class SearchPage extends StatelessWidget {
   const SearchPage({super.key});
 
   @override
-  State<SearchPage> createState() => _SearchPageState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (_) => SearchCubit(GitHubService(Dio())),
+      child: const SearchView(),
+    );
+  }
 }
 
-class _SearchPageState extends State<SearchPage> {
+class SearchView extends StatefulWidget {
+  const SearchView({super.key});
+
+  @override
+  State<SearchView> createState() => _SearchViewState();
+}
+
+class _SearchViewState extends State<SearchView> {
   final _controller = TextEditingController();
-  final GitHubService service = GitHubService(Dio());
-  Map<String, dynamic>? _user;
-
-  Future<void> _searchUser() async {
-    final username = _controller.text.trim();
-    if (username.isEmpty) return;
-
-    try {
-      final user = await service.fetchUser(username);
-      setState(() {
-        _user = user;
-      });
-
-      // Salvando no histórico
-      final prefs = await SharedPreferences.getInstance();
-      List<String> history = prefs.getStringList('search_history') ?? [];
-      if (!history.contains(username)) {
-        history.add(username);
-        await prefs.setStringList('search_history', history);
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Usuário não encontrado')),
-      );
-    }
-  }
 
   Future<void> _openHistory() async {
     final username = await Navigator.push<String>(
@@ -50,7 +39,14 @@ class _SearchPageState extends State<SearchPage> {
     );
     if (username != null) {
       _controller.text = username;
-      await _searchUser();
+      context.read<SearchCubit>().fetchUser(username);
+    }
+  }
+
+  void _searchUser() {
+    final username = _controller.text.trim();
+    if (username.isNotEmpty) {
+      context.read<SearchCubit>().fetchUser(username);
     }
   }
 
@@ -85,21 +81,43 @@ class _SearchPageState extends State<SearchPage> {
             ),
             const SizedBox(height: 16),
             Expanded(
-              child: _user == null
-                  ? const Center(child: Text('Nenhuma busca realizada ainda'))
-                  : ListView(
-                children: [
-                  UserCard(user: _user!),
-                  const SizedBox(height: 24),
-                  UserRepositoriesChart(
-                    repositoryCounts: [10, 8, 5, 12, 7], // Simulado
-                  ),
-                ],
+              child: BlocBuilder<SearchCubit, SearchState>(
+                builder: (context, state) {
+                  if (state is SearchInitial) {
+                    return const Center(child: Text('Nenhuma busca realizada ainda'));
+                  } else if (state is SearchLoading) {
+                    return const Center(child: CircularProgressIndicator());
+                  } else if (state is SearchSuccess) {
+                    _saveSearchToHistory(state.user['login']);
+                    return ListView(
+                      children: [
+                        UserCard(user: state.user),
+                        const SizedBox(height: 24),
+                        UserRepositoriesChart(
+                          repositoryCounts: [10, 8, 5, 12, 7], // Simulado
+                        ),
+                      ],
+                    );
+                  } else if (state is SearchFailure) {
+                    return Center(child: Text(state.error));
+                  } else {
+                    return const SizedBox.shrink();
+                  }
+                },
               ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _saveSearchToHistory(String username) async {
+    final prefs = await SharedPreferences.getInstance();
+    List<String> history = prefs.getStringList('search_history') ?? [];
+    if (!history.contains(username)) {
+      history.add(username);
+      await prefs.setStringList('search_history', history);
+    }
   }
 }
